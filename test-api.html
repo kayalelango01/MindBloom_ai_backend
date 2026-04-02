@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindBloom API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #45a049; }
+        input, textarea { padding: 8px; margin: 5px; width: 200px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🌱 MindBloom API Integration Test</h1>
+    
+    <div class="section">
+        <h2>Step 1: Get CSRF Token</h2>
+        <button onclick="getCSRF()">Get CSRF Cookie</button>
+        <pre id="csrf-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Register User</h2>
+        <input type="text" id="reg-username" placeholder="Username" value="testuser1">
+        <input type="email" id="reg-email" placeholder="Email" value="test@example.com">
+        <input type="password" id="reg-password" placeholder="Password" value="testpass123">
+        <br>
+        <button onclick="register()">Register</button>
+        <pre id="register-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Login</h2>
+        <input type="text" id="login-username" placeholder="Username" value="testuser1">
+        <input type="password" id="login-password" placeholder="Password" value="testpass123">
+        <br>
+        <button onclick="login()">Login</button>
+        <pre id="login-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: Get Current User</h2>
+        <button onclick="getMe()">Get Me</button>
+        <pre id="me-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 5: Log Mood</h2>
+        <select id="mood-select">
+            <option value="happy">Happy 😊</option>
+            <option value="neutral">Neutral 😐</option>
+            <option value="sad">Sad 😢</option>
+            <option value="anxious">Anxious 😰</option>
+            <option value="excited">Excited 🎉</option>
+        </select>
+        <input type="text" id="mood-note" placeholder="Note (optional)">
+        <br>
+        <button onclick="logMood()">Log Mood</button>
+        <pre id="mood-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 6: Get Moods</h2>
+        <button onclick="getMoods()">Get All Moods</button>
+        <pre id="moods-list"></pre>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8000/api';
+
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            for (const cookie of document.cookie.split(';')) {
+                const c = cookie.trim();
+                if (c.startsWith(name + '=')) return c.substring(name.length + 1);
+            }
+            return '';
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(`${BASE_URL}${endpoint}`, options);
+            const data = await response.json();
+            data._status = response.status;
+            return data;
+        }
+
+        function showResult(elementId, data) {
+            const el = document.getElementById(elementId);
+            el.textContent = JSON.stringify(data, null, 2);
+            el.className = data._status >= 200 && data._status < 300 ? 'success' : 'error';
+        }
+
+        // Step 1: Get CSRF
+        async function getCSRF() {
+            try {
+                const response = await fetch(`${BASE_URL}/csrf/`, { credentials: 'include' });
+                const data = await response.json();
+                data._status = response.status;
+                showResult('csrf-result', data);
+                console.log('✅ CSRF Cookie set:', document.cookie);
+            } catch (error) {
+                showResult('csrf-result', { error: error.message });
+            }
+        }
+
+        // Step 2: Register
+        async function register() {
+            try {
+                const data = await apiCall('/auth/register/', 'POST', {
+                    username: document.getElementById('reg-username').value,
+                    email: document.getElementById('reg-email').value,
+                    password: document.getElementById('reg-password').value
+                });
+                showResult('register-result', data);
+            } catch (error) {
+                showResult('register-result', { error: error.message });
+            }
+        }
+
+        // Step 3: Login
+        async function login() {
+            try {
+                const data = await apiCall('/auth/login/', 'POST', {
+                    username: document.getElementById('login-username').value,
+                    password: document.getElementById('login-password').value
+                });
+                showResult('login-result', data);
+            } catch (error) {
+                showResult('login-result', { error: error.message });
+            }
+        }
+
+        // Step 4: Get current user
+        async function getMe() {
+            try {
+                const data = await apiCall('/auth/me/');
+                showResult('me-result', data);
+            } catch (error) {
+                showResult('me-result', { error: error.message });
+            }
+        }
+
+        // Step 5: Log mood
+        async function logMood() {
+            try {
+                const data = await apiCall('/moods/', 'POST', {
+                    mood: document.getElementById('mood-select').value,
+                    note: document.getElementById('mood-note').value
+                });
+                showResult('mood-result', data);
+            } catch (error) {
+                showResult('mood-result', { error: error.message });
+            }
+        }
+
+        // Step 6: Get moods
+        async function getMoods() {
+            try {
+                const data = await apiCall('/moods/');
+                showResult('moods-list', data);
+            } catch (error) {
+                showResult('moods-list', { error: error.message });
+            }
+        }
+
+        // Auto-run CSRF on page load
+        window.onload = () => {
+            console.log('🔄 Getting CSRF token on page load...');
+            getCSRF();
+        };
+    </script>
+</body>
+</html>
