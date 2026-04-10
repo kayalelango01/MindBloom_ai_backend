@@ -6,7 +6,8 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-mindbloom-change-this-in-production-xyz123'
+import os
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-local-dev-key')
 DEBUG = False
 ALLOWED_HOSTS = ['*']
 
