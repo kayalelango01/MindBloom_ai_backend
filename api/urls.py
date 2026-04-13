@@ -22,4 +22,5 @@ urlpatterns = [
 
     # ── EMERGENCY CONTACT ────────────────────────────
     path('emergency-contact/', views.EmergencyContactView.as_view()),
+    path('ai-analysis/',       views.ai_mood_analysis),
 ]

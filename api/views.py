@@ -186,3 +186,68 @@ class EmergencyContactView(APIView):
             return Response(serializer.data, status=code)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+# ═════════════════════════════════════════════════════
+# AI MOOD ANALYSIS VIEW
+# ═════════════════════════════════════════════════════
+
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ai_mood_analysis(request):
+    """GET /api/ai-analysis/ — analyzes last 3-4 mood entries"""
+
+    MOOD_SCORES = {
+        'Happy':    2,
+        'Calm':     1,
+        'Neutral':  0,
+        'Sad':     -1,
+        'Stressed':-2,
+        'Anxious': -2,
+    }
+
+    moods = Mood.objects.filter(user=request.user).order_by('-date')[:4]
+
+    if len(moods) < 3:
+        return Response({
+            'trend': None,
+            'average_score': None,
+            'message': 'Please log your mood for at least 3 days to get AI insights.'
+        })
+
+    scores = [MOOD_SCORES.get(m.mood, 0) for m in moods]
+    avg = sum(scores) / len(scores)
+    avg_rounded = round(avg, 2)
+
+    if avg <= -1:
+        trend = 'Negative'
+        message = (
+            "You have been feeling low or stressed for the past few days. "
+            "It's completely okay to feel this way sometimes. "
+            "Try taking small steps like going for a walk, talking to a friend, "
+            "doing something you enjoy, or simply taking rest. "
+            "Be gentle with yourself — you're doing better than you think. 💙"
+        )
+    elif avg >= 1:
+        trend = 'Positive'
+        message = (
+            "You have been feeling positive and happy for the past few days. "
+            "That's truly wonderful to see! 🌻 Take a moment to be grateful, "
+            "journal your feelings, and keep doing the things that bring you joy. "
+            "You're glowing — keep that energy going!"
+        )
+    else:
+        trend = 'Neutral'
+        message = (
+            "Your mood has been quite stable over the past few days. "
+            "Balance is a great place to be. 🌿 Try engaging in small activities "
+            "you enjoy — a favourite song, a short walk, or a warm cup of tea — "
+            "to bring a little extra positivity into your routine."
+        )
+
+    return Response({
+        'trend': trend,
+        'average_score': avg_rounded,
+        'message': message,
+    })
+    
